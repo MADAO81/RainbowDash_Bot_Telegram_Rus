@@ -7,7 +7,7 @@
 ![Platform](https://img.shields.io/badge/platform-Telegram-blue)
 ![AI](https://img.shields.io/badge/AI-DeepSeek%20V4-brightgreen)
 
-> **Статус:** 🚧 **В разработке**
+> **Статус:** ✅ **Готов к использованию**
 >
 > 👨‍💻 *Автор: MADAO81*
 
@@ -44,14 +44,14 @@
 | `/reminders` | Список напоминаний 📋 |
 | `/cancel` | Отменить напоминание ❌ |
 | `/subscribe` | Подписаться 📬 |
-| `/unsubscribe` | Отписаться 📭 |
+| `/unsubscribe` | Отписаться |
 | `/cleardata` | Очистить историю 🗑️ |
 
 ---
 
 ## 📝 Ежедневные рассылки
 
-* **08:45** — **«Бодрый старт»** — мотивирующая фраза для начала дня.
+* **8:45** — **«Бодрый старт»** — мотивирующая фраза для начала дня.
 * **17:45** — **«Рок-рекомендация»** — совет по спорту или рок-песня.
 
 > 🔔 Подписка оформляется через команду `/subscribe`.
@@ -71,8 +71,9 @@ cd RainbowDash_Bot_Telegram_Rus
 
 ```bash
 python -m venv venv
-source venv/bin/activate  # Для Linux/macOS
-# или venv\Scripts\activate  # Для Windows
+source venv/bin/activate  # Linux/Mac
+# или
+venv\Scripts\activate     # Windows
 ```
 
 ### 3. Установите зависимости
@@ -83,13 +84,48 @@ pip install -r requirements.txt
 
 ### 4. Настройте переменные окружения
 
-Скопируйте файл `.env.example` в новый файл `.env` и заполните его вашими токенами:
+Скопируйте `.env.example` в `.env` и заполните:
 
-```bash
-cp .env.example .env
+```env
+# Telegram
+TELEGRAM_TOKEN=ваш_токен_бота
+
+# DeepSeek через ProxyAPI
+PROXY_API_KEY=ваш_ключ
+DEEPSEEK_MODEL=deepseek/deepseek-v4-flash
+DEEPSEEK_MAX_TOKENS=2000
+DEEPSEEK_TEMPERATURE=0.9
+
+# OpenAI (для голоса)
+OPENAI_API_KEY=ваш_ключ
+OPENAI_MODEL=gpt-4-turbo
+OPENAI_MAX_TOKENS=1000
+OPENAI_TEMPERATURE=0.85
+
+# Координаты Ворсино
+DEFAULT_LAT=55.0965
+DEFAULT_LON=36.6355
+
+# Настройки
+WORK_START_HOUR=9
+WORK_END_HOUR=22
+CONTEXT_EXPIRE_DAYS=30
+
+# Администратор
+ADMIN_ID=ваш_telegram_id
+
+# Режим отладки
+DEBUG_MODE=false
 ```
 
-### 5. Запустите бота
+### 5. Создайте базы данных
+
+```bash
+python3 bot/scripts/create_reminders_db.py
+python3 bot/scripts/create_subscriptions_db.py
+```
+
+### 6. Запустите бота
 
 ```bash
 python run.py
@@ -97,19 +133,90 @@ python run.py
 
 ---
 
-## 📄 Лицензия
+## 📁 Структура проекта
 
-Проект распространяется под лицензией **MIT License**.
-
-## 👨‍💻 Автор
-
-* **MADAO81** — *Разработчик*
+```text
+RainbowDash_Bot_Telegram_Rus/
+├── .env                      # Переменные окружения (НЕ ПУШИТЬ!)
+├── .env.example              # Пример переменных окружения
+├── .gitignore                # Git ignore
+├── README.md                 # Описание проекта
+├── requirements.txt          # Зависимости
+├── run.py                    # Точка входа
+│
+├── bot/
+│   ├── __init__.py
+│   ├── config.py             # Конфигурация
+│   ├── main.py               # Запуск
+│   │
+│   ├── core/                 # Ядро
+│   │   ├── __init__.py
+│   │   ├── constants.py      # Системный промпт
+│   │   ├── context_manager.py # История
+│   │   ├── reminder_manager.py # Напоминания
+│   │   ├── reminder_parser.py # Парсер дат
+│   │   ├── reminder_scheduler.py # Проверка напоминаний
+│   │   └── scheduler.py      # Планировщик рассылок
+│   │
+│   ├── handlers/             # Обработчики
+│   │   ├── __init__.py
+│   │   ├── commands.py       # Основные команды
+│   │   ├── extra.py          # /sport, /rock, /harley, /challenge, /motivate, /truth
+│   │   ├── admin.py          # Админ-команды
+│   │   ├── messages.py       # Текстовые сообщения
+│   │   ├── photos.py         # Фото
+│   │   └── voice.py          # Голосовые
+│   │
+│   ├── services/             # Сервисы
+│   │   ├── __init__.py
+│   │   ├── ai_service.py     # DeepSeek + OpenAI
+│   │   └── weather_service.py # Погода
+│   │
+│   ├── utils/                # Утилиты
+│   │   ├── __init__.py
+│   │   └── time_utils.py     # Проверка рабочего времени
+│   │
+│   └── scripts/              # Скрипты для БД
+│       ├── create_reminders_db.py
+│       └── create_subscriptions_db.py
+│
+├── data/                     # Данные
+│   ├── conversations.db      # История
+│   └── reminders.db          # Напоминания
+│
+├── logs/                     # Логи
+└── tests/                    # Тесты
+```
 
 ---
 
-🌈 *Сделано с молнией, роком и любовью к скорости.* ⚡
+## 📝 Особенности поведения
 
-👨‍💻 Автор
-MADAO81
+### 🎯 Реакция на сообщения в группах
 
-🌈 Сделано с молнией, роком и любовью к скорости. ⚡
+| Ситуация | Поведение |
+|----------|-----------|
+| Упоминание бота (`@username`) | ✅ Всегда отвечает |
+| Ответ на сообщение бота | ✅ Всегда отвечает |
+| Обычное сообщение (без упоминания) | ❌ Не отвечает |
+| Личное сообщение | ✅ Всегда отвечает |
+
+### ⏰ Рабочее время
+
+- **Понедельник — Воскресенье:** 9:00 — 22:00
+- **Вне рабочего времени:** игнорирует сообщения в группах, в личке отвечает: *«Я отдыхаю, приходите завтра!»*
+
+---
+
+## 📄 Лицензия
+
+[MIT License](LICENSE) — свободное использование с указанием авторства.
+
+---
+
+## 👨‍💻 Автор
+
+**MADAO81** — разработка и поддержка проекта.
+
+_🌈 Сделано с молнией, роком и любовью к скорости._ ⚡
+
