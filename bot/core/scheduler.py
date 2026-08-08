@@ -3,7 +3,7 @@
 Отправка бодрого старта в 8:45 и рок-рекомендации в 17:45.
 
 Автор: MADAO81
-Версия: 1.0
+Версия: 1.1 — разбивка длинных сообщений
 """
 
 import logging
@@ -91,6 +91,7 @@ async def unsubscribe_command(update: Update, context: ContextTypes.DEFAULT_TYPE
 
 
 async def send_long_message(bot, chat_id: int, text: str, parse_mode: str = "Markdown"):
+    """Отправляет длинное сообщение, разбивая на части."""
     if not text:
         return
 
@@ -104,7 +105,8 @@ async def send_long_message(bot, chat_id: int, text: str, parse_mode: str = "Mar
         if len(current_part) + len(paragraph) + 1 < 4000:
             current_part += paragraph + '\n'
         else:
-            parts.append(current_part.strip())
+            if current_part:
+                parts.append(current_part.strip())
             current_part = paragraph + '\n'
     if current_part:
         parts.append(current_part.strip())
