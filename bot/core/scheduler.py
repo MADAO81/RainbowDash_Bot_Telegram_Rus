@@ -3,22 +3,24 @@
 Отправка бодрого старта в 8:45 и рок-рекомендации в 17:45.
 
 Автор: MADAO81
-Версия: 1.4 — финальная разбивка для всех рассылок
+Версия: 2.0 — вечерняя рассылка через БД рок-хитов
 """
 
 import logging
 import sqlite3
+import random
 from telegram import Update
 from telegram.ext import ContextTypes
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
 from bot.config import Config
-from bot.services.ai_service import get_morning_start, get_evening_rock
+from bot.services.ai_service import get_morning_start, get_rainbow_response
 
 logger = logging.getLogger(__name__)
 
 scheduler = AsyncIOScheduler()
 DB_PATH = Config.DATA_DIR / "subscriptions.db"
+ROCK_DB_PATH = Config.DATA_DIR / "rock_songs.db"
 
 
 def _get_connection():
@@ -68,6 +70,18 @@ def get_active_chats():
     return [row[0] for row in rows]
 
 
+def get_random_song():
+    """Возвращает случайную песню из БД."""
+    conn = sqlite3.connect(ROCK_DB_PATH)
+    cursor = conn.cursor()
+    cursor.execute("SELECT artist, song, vibe FROM rock_songs ORDER BY RANDOM() LIMIT 1")
+    row = cursor.fetchone()
+    conn.close()
+    if row:
+        return {"artist": row[0], "song": row[1], "vibe": row[2]}
+    return None
+
+
 async def subscribe_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = update.message.chat_id
     add_chat(chat_id)
@@ -91,7 +105,6 @@ async def unsubscribe_command(update: Update, context: ContextTypes.DEFAULT_TYPE
 
 
 async def send_long_message(bot, chat_id: int, text: str, parse_mode: str = "Markdown"):
-    """Отправляет длинное сообщение, разбивая на части."""
     if not text:
         return
 
@@ -161,9 +174,22 @@ async def send_evening_rock(app):
 
     logger.info(f"🎸 Отправка рок-рекомендации в {len(active_chats)} чатов...")
 
-    message = await get_evening_rock()
+    # Берём случайную песню из БД
+    song = get_random_song()
+    if not song:
+        logger.warning("⚠️ Нет песен в базе данных!")
+        return
+
+    # Формируем запрос к DeepSeek для переработки в стиле Радуги
+    prompt = f"""
+    Ты — Рэйнбоу Дэш. Расскажи о песне {song['artist']} — «{song['song']}» в своём стиле.
+    Сделай это коротко, энергично, с драйвом. Ответ — 2-3 предложения.
+    Используй эмодзи: ⚡🎸🤘
+    """
+
+    message = await get_rainbow_response(prompt)
     if not message:
-        message = "🎸 *Рок-рекомендация:* Послушай AC/DC — это всегда заряжает! 🤘"
+        message = f"🎸 *Рок-рекомендация:* {song['artist']} — «{song['song']}»! Врубай на полную! 🤘⚡"
 
     for chat_id in active_chats:
         try:
