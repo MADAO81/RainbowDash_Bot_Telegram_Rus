@@ -2,7 +2,7 @@
 AI сервис для бота Рэйнбоу Дэш (DeepSeek + OpenAI).
 
 Автор: MADAO81
-Версия: 1.0
+Версия: 1.1 — увеличен max_tokens для утренней рассылки
 """
 
 import logging
@@ -78,7 +78,7 @@ async def get_morning_start() -> Optional[str]:
         response = await client.chat.completions.create(
             model=Config.DEEPSEEK_MODEL,
             messages=messages,
-            max_tokens=200,
+            max_tokens=500,  # Увеличено с 200 до 500 токенов для полного сообщения
             temperature=0.9,
             timeout=30.0
         )
