@@ -2,7 +2,7 @@
 AI сервис для бота Рэйнбоу Дэш (DeepSeek + OpenAI).
 
 Автор: MADAO81
-Версия: 1.1 — увеличен max_tokens для утренней рассылки
+Версия: 1.2 — увеличен max_tokens, улучшен промпт, добавлена диагностика finish_reason
 """
 
 import logging
@@ -52,7 +52,17 @@ async def get_rainbow_response(
         )
 
         if response.choices and len(response.choices) > 0:
-            return response.choices[0].message.content.strip()
+            choice = response.choices[0]
+            finish_reason = choice.finish_reason
+            content = choice.message.content.strip() if choice.message.content else None
+            
+            # Диагностика: если ответ обрезан по длине
+            if finish_reason == "length":
+                logger.warning(f"⚠️ Ответ обрезан по длине! finish_reason=length, content_length={len(content) if content else 0}")
+            else:
+                logger.debug(f"✅ Ответ получен. finish_reason={finish_reason}")
+            
+            return content
         return None
 
     except Exception as e:
@@ -69,7 +79,14 @@ async def get_morning_start() -> Optional[str]:
             base_url="https://api.proxyapi.ru/openrouter/v1"
         )
 
-        prompt = "Придумай короткую, энергичную и мотивирующую фразу для начала дня. ОБЯЗАТЕЛЬНО на русском языке. Говори как Рэйнбоу Дэш — дерзко, с драйвом."
+        # Улучшенный промпт: просим законченное сообщение, а не "короткую фразу"
+        prompt = (
+            "Напиши законченное мотивирующее сообщение для начала дня. "
+            "ОБЯЗАТЕЛЬНО на русском языке. "
+            "Говори как Рэйнбоу Дэш — дерзко, с драйвом, энергично. "
+            "Сообщение должно быть ЦЕЛЬНЫМ — с началом и концом, не обрывайся на полуслове. "
+            "Длина: 2-3 предложения."
+        )
         messages = [
             {"role": "system", "content": SYSTEM_PROMPT},
             {"role": "user", "content": prompt}
@@ -78,13 +95,23 @@ async def get_morning_start() -> Optional[str]:
         response = await client.chat.completions.create(
             model=Config.DEEPSEEK_MODEL,
             messages=messages,
-            max_tokens=500,  # Увеличено с 200 до 500 токенов для полного сообщения
+            max_tokens=1500,  # Увеличено с 500 до 1500 (DeepSeek поддерживает до 4096)
             temperature=0.9,
             timeout=30.0
         )
 
         if response.choices and len(response.choices) > 0:
-            return response.choices[0].message.content.strip()
+            choice = response.choices[0]
+            finish_reason = choice.finish_reason
+            content = choice.message.content.strip() if choice.message.content else None
+            
+            # Диагностика
+            logger.info(f"📝 Утреннее сообщение: finish_reason={finish_reason}, длина={len(content) if content else 0}")
+            
+            if finish_reason == "length":
+                logger.warning("⚠️ Утреннее сообщение обрезано по длине! Увеличьте max_tokens.")
+            
+            return content
         return None
 
     except Exception as e:
@@ -109,13 +136,20 @@ async def get_evening_rock() -> Optional[str]:
         response = await client.chat.completions.create(
             model=Config.DEEPSEEK_MODEL,
             messages=messages,
-            max_tokens=250,
+            max_tokens=500,  # Увеличено с 250 до 500
             temperature=0.9,
             timeout=30.0
         )
 
         if response.choices and len(response.choices) > 0:
-            return response.choices[0].message.content.strip()
+            choice = response.choices[0]
+            finish_reason = choice.finish_reason
+            content = choice.message.content.strip() if choice.message.content else None
+            
+            if finish_reason == "length":
+                logger.warning("⚠️ Вечернее сообщение обрезано по длине!")
+            
+            return content
         return None
 
     except Exception as e:
