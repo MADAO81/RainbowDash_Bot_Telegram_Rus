@@ -2,7 +2,7 @@
 Главный модуль бота Рэйнбоу Дэш.
 
 Автор: MADAO81
-Версия: 1.0
+Версия: 1.1 — выборочное логирование (убираем DEBUG-спам от httpcore/httpx/telegram)
 """
 
 import logging
@@ -26,15 +26,28 @@ from bot.core.scheduler import start_scheduler, subscribe_command, unsubscribe_c
 from bot.core.reminder_scheduler import start_reminder_scheduler
 from bot.core.constants import VERSION
 
+# Базовое логирование для нашего бота — INFO
 logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
     level=logging.INFO
 )
+
+# Отключаем шумные библиотеки — они не должны спамить в логи
+logging.getLogger("httpcore").setLevel(logging.WARNING)
+logging.getLogger("httpx").setLevel(logging.WARNING)
+logging.getLogger("telegram").setLevel(logging.WARNING)
+logging.getLogger("telegram.ext").setLevel(logging.WARNING)
+logging.getLogger("apscheduler").setLevel(logging.WARNING)
+logging.getLogger("openai").setLevel(logging.WARNING)
+logging.getLogger("urllib3").setLevel(logging.WARNING)
+
 logger = logging.getLogger(__name__)
 
+# Включаем DEBUG только для нашего бота (если нужно)
 if Config.DEBUG_MODE:
-    logging.getLogger().setLevel(logging.DEBUG)
-    logger.info("🐛 DEBUG_MODE включён")
+    # Логируем всё, что наш бот пишет
+    logging.getLogger("bot").setLevel(logging.DEBUG)
+    logger.info("🐛 DEBUG_MODE включён (только для модулей 'bot')")
 
 
 def main():
