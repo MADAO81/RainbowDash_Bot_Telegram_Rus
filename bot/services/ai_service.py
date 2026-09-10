@@ -2,7 +2,7 @@
 AI сервис для бота Рэйнбоу Дэш (DeepSeek + OpenAI).
 
 Автор: MADAO81
-Версия: 1.2 — увеличен max_tokens, улучшен промпт, добавлена диагностика finish_reason
+Версия: 1.3 — утренняя рассылка через полноценный диалог (фикс обрезания)
 """
 
 import logging
@@ -55,13 +55,12 @@ async def get_rainbow_response(
             choice = response.choices[0]
             finish_reason = choice.finish_reason
             content = choice.message.content.strip() if choice.message.content else None
-            
-            # Диагностика: если ответ обрезан по длине
+
             if finish_reason == "length":
-                logger.warning(f"⚠️ Ответ обрезан по длине! finish_reason=length, content_length={len(content) if content else 0}")
+                logger.warning(f"⚠️ Ответ обрезан по длине! content_length={len(content) if content else 0}")
             else:
                 logger.debug(f"✅ Ответ получен. finish_reason={finish_reason}")
-            
+
             return content
         return None
 
@@ -72,89 +71,38 @@ async def get_rainbow_response(
 
 # === РАССЫЛКИ ===
 async def get_morning_start() -> Optional[str]:
-    """Генерирует бодрое утреннее сообщение на РУССКОМ языке."""
-    try:
-        client = AsyncOpenAI(
-            api_key=Config.PROXY_API_KEY,
-            base_url="https://api.proxyapi.ru/openrouter/v1"
-        )
+    """
+    Генерирует бодрое утреннее сообщение.
+    Использует тот же механизм, что и личный диалог, чтобы избежать обрезания.
+    """
+    # Промпт в стиле диалога — как будто пользователь просит написать сообщение
+    user_message = (
+        "Представь, что ты пишешь сообщение в чат для своих подписчиков. "
+        "Это НЕ команда, а полноценное утреннее приветствие. "
+        "Напиши развёрнутое бодрое сообщение: поздоровайся, разбуди, замотивируй, пожелай хорошего дня. "
+        "ОБЯЗАТЕЛЬНО на русском языке. Говори как Рэйнбоу Дэш — дерзко, с драйвом, энергично. "
+        "Сообщение должно быть ЗАКОНЧЕННЫМ — с началом, основной частью и концовкой. "
+        "НЕ обрывай на полуслове. НЕ пиши коротко. Пиши как будто рассказываешь другу."
+    )
 
-        # Улучшенный промпт: просим законченное сообщение, а не "короткую фразу"
-        prompt = (
-            "Напиши законченное мотивирующее сообщение для начала дня. "
-            "ОБЯЗАТЕЛЬНО на русском языке. "
-            "Говори как Рэйнбоу Дэш — дерзко, с драйвом, энергично. "
-            "Сообщение должно быть ЦЕЛЬНЫМ — с началом и концом, не обрывайся на полуслове. "
-            "Длина: 2-3 предложения."
-        )
-        messages = [
-            {"role": "system", "content": SYSTEM_PROMPT},
-            {"role": "user", "content": prompt}
-        ]
-
-        response = await client.chat.completions.create(
-            model=Config.DEEPSEEK_MODEL,
-            messages=messages,
-            max_tokens=1500,  # Увеличено с 500 до 1500 (DeepSeek поддерживает до 4096)
-            temperature=0.9,
-            timeout=30.0
-        )
-
-        if response.choices and len(response.choices) > 0:
-            choice = response.choices[0]
-            finish_reason = choice.finish_reason
-            content = choice.message.content.strip() if choice.message.content else None
-            
-            # Диагностика
-            logger.info(f"📝 Утреннее сообщение: finish_reason={finish_reason}, длина={len(content) if content else 0}")
-            
-            if finish_reason == "length":
-                logger.warning("⚠️ Утреннее сообщение обрезано по длине! Увеличьте max_tokens.")
-            
-            return content
-        return None
-
-    except Exception as e:
-        logger.error(f"❌ Morning start error: {e}")
-        return None
+    logger.info("🌅 Генерация утреннего сообщения через get_rainbow_response...")
+    return await get_rainbow_response(user_message, mood_description="happy")
 
 
 async def get_evening_rock() -> Optional[str]:
-    """Генерирует вечернюю рок-рекомендацию на РУССКОМ языке."""
-    try:
-        client = AsyncOpenAI(
-            api_key=Config.PROXY_API_KEY,
-            base_url="https://api.proxyapi.ru/openrouter/v1"
-        )
+    """
+    Генерирует вечернюю рок-рекомендацию.
+    Использует тот же механизм, что и личный диалог.
+    """
+    user_message = (
+        "Представь, что ты пишешь вечернее сообщение в чат для подписчиков. "
+        "Расскажи о рок-музыке или дай совет по спорту на вечер. "
+        "ОБЯЗАТЕЛЬНО на русском языке. Говори как Рэйнбоу Дэш. "
+        "Сообщение должно быть законченным и развёрнутым."
+    )
 
-        prompt = "Предложи короткую рекомендацию по рок-музыке или спорту для вечера. ОБЯЗАТЕЛЬНО на русском языке. Говори как Рэйнбоу Дэш."
-        messages = [
-            {"role": "system", "content": SYSTEM_PROMPT},
-            {"role": "user", "content": prompt}
-        ]
-
-        response = await client.chat.completions.create(
-            model=Config.DEEPSEEK_MODEL,
-            messages=messages,
-            max_tokens=500,  # Увеличено с 250 до 500
-            temperature=0.9,
-            timeout=30.0
-        )
-
-        if response.choices and len(response.choices) > 0:
-            choice = response.choices[0]
-            finish_reason = choice.finish_reason
-            content = choice.message.content.strip() if choice.message.content else None
-            
-            if finish_reason == "length":
-                logger.warning("⚠️ Вечернее сообщение обрезано по длине!")
-            
-            return content
-        return None
-
-    except Exception as e:
-        logger.error(f"❌ Evening rock error: {e}")
-        return None
+    logger.info("🎸 Генерация вечернего сообщения через get_rainbow_response...")
+    return await get_rainbow_response(user_message, mood_description="happy")
 
 
 # === OPENAI ДЛЯ ГОЛОСА ===
